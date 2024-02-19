@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use clap::ArgMatches;
 use strem::datastream::exporter::stremf::DataExporter;
 use strem::datastream::DataStream;
-use stremf::config::Configuration;
-use stremf::schema::nuscenes::NuScenes;
-use stremf::schema::{Schema, SchemaKind};
+use strem_format::config::Configuration;
+use strem_format::schema::nuscenes::NuScenes;
+use strem_format::schema::{Schema, SchemaKind};
 
 pub struct App {
     matches: ArgMatches,

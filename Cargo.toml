@@ -1,5 +1,5 @@
 [package]
-name = "stremf"
+name = "strem-format"
 version = "0.1.0"
 description = "A tool for verifying, formatting, and converting various perception datasets to the STREM format."
 edition = "2021"
