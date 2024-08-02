@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use strem::datastream::DataStream;
+use strem::datastream::frame::Frame;
 
 pub mod nuscenes;
 
 pub trait Schema {
-    fn import(&self) -> Result<Vec<(String, DataStream)>, Box<dyn Error>>;
+    fn import(&self) -> Result<Vec<(String, Vec<Frame>)>, Box<dyn Error>>;
 }
 
 /// The set of schemas supported.

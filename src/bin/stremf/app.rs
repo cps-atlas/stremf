@@ -1,5 +1,7 @@
 use std::error::Error;
 use std::fmt;
+use std::fs::File;
+use std::io::BufWriter;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,9 +32,16 @@ impl App {
             let schema = NuScenes::new(infile, &config);
             let datastreams = schema.import()?;
 
-            for (name, datastream) in datastreams {
+            for (name, frames) in datastreams {
                 let path = PathBuf::from(&config.outfile).join(format!("{}.json", name));
-                DataExporter::new().export(&datastream.frames, &path)?;
+
+                // Write the data to the file.
+                //
+                // This will attempt to write the file, accordingly.
+                serde_json::to_writer(
+                    BufWriter::new(File::create(&path)?),
+                    &DataExporter::new().export(&frames)?,
+                )?;
 
                 if config.debug {
                     println!(

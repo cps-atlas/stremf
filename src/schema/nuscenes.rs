@@ -17,7 +17,6 @@ use strem::datastream::frame::sample::detections::{
 };
 use strem::datastream::frame::sample::Sample;
 use strem::datastream::frame::Frame;
-use strem::datastream::DataStream;
 
 use crate::config::Configuration;
 
@@ -229,7 +228,7 @@ impl<'a> NuScenes<'a> {
 }
 
 impl Schema for NuScenes<'_> {
-    fn import(&self) -> Result<Vec<(String, DataStream)>, Box<dyn Error>> {
+    fn import(&self) -> Result<Vec<(String, Vec<Frame>)>, Box<dyn Error>> {
         self.debug(&format!("root directory at `{}`", self.root.display()));
 
         // Set up internal database.
@@ -310,7 +309,7 @@ impl Schema for NuScenes<'_> {
         let mut datastreams = Vec::new();
 
         for scene in scenes.values() {
-            let mut datastream = DataStream::new();
+            let mut frames = Vec::new();
             let mut index = 0;
 
             let mut current = &scene.first_sample_token;
@@ -358,10 +357,10 @@ impl Schema for NuScenes<'_> {
                 current = &sample.next;
 
                 // INSERT
-                datastream.frames.push(frame);
+                frames.push(frame);
             }
 
-            datastreams.push((scene.token.clone(), datastream));
+            datastreams.push((scene.token.clone(), frames));
         }
 
         Ok(datastreams)
