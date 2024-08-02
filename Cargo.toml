@@ -1,5 +1,5 @@
 [package]
-name = "strem-format"
+name = "stremf"
 version = "0.1.0"
 description = "A tool for verifying, formatting, and converting various perception datasets to the STREM format."
 edition = "2021"
@@ -10,4 +10,4 @@ json5 = "0.4.1"
 nalgebra = "0.32.3"
 serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.113"
-strem = { version = "0.1.0", path = "../strem" }
+strem = { version = "0.1.1", path = "../strem" }

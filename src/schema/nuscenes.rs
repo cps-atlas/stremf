@@ -10,8 +10,10 @@ use nalgebra::{
     Quaternion, RowSVector as StaticRowVector, SMatrix as StaticMatrix, Translation, UnitQuaternion,
 };
 use serde::de::DeserializeOwned;
+use strem::datastream::frame::sample::detections::bbox::region::{aa, Point};
+use strem::datastream::frame::sample::detections::bbox::BoundingBox;
 use strem::datastream::frame::sample::detections::{
-    Annotation, BoundingBox, DetectionRecord, Image, ImageSource, Point,
+    Annotation, DetectionRecord, Image, ImageSource,
 };
 use strem::datastream::frame::sample::Sample;
 use strem::datastream::frame::Frame;
@@ -122,7 +124,7 @@ impl<'a> NuScenes<'a> {
         if let Some(width) = data.width {
             if let Some(height) = data.height {
                 let source = ImageSource::File(PathBuf::from(&data.filename));
-                return Some(Image::new(source, width, height));
+                return Some(Image::new(source, width as u32, height as u32));
             }
         }
 
@@ -169,7 +171,10 @@ impl<'a> NuScenes<'a> {
                     .push(Annotation::new(
                         label.name.clone(),
                         1.0,
-                        BoundingBox::new(Point::new(xmin, ymin), Point::new(xmax, ymax)),
+                        BoundingBox::AxisAligned(aa::Region::new(
+                            Point::new(xmin, ymin),
+                            Point::new(xmax, ymax),
+                        )),
                     ));
             }
         }
@@ -224,7 +229,7 @@ impl<'a> NuScenes<'a> {
 }
 
 impl Schema for NuScenes<'_> {
-    fn import(&self) -> Result<DataStream, Box<dyn Error>> {
+    fn import(&self) -> Result<Vec<(String, DataStream)>, Box<dyn Error>> {
         self.debug(&format!("root directory at `{}`", self.root.display()));
 
         // Set up internal database.
@@ -302,10 +307,12 @@ impl Schema for NuScenes<'_> {
         //
         // This will loop through each scene and collect the samples and
         // associated data into a linear stream.
-        let mut datastream = DataStream::new();
-        let mut index = 0;
+        let mut datastreams = Vec::new();
 
         for scene in scenes.values() {
+            let mut datastream = DataStream::new();
+            let mut index = 0;
+
             let mut current = &scene.first_sample_token;
 
             while let Some(sample) = samples.get(current) {
@@ -313,7 +320,7 @@ impl Schema for NuScenes<'_> {
                 //
                 // The index and associated timestamp of the [`Frame`] must be
                 // provided when constructing the [`Frame`].
-                let mut frame = Frame::new(index, sample.timestamp);
+                let mut frame = Frame::new(index);
 
                 for data in datas.get(&sample.token).unwrap() {
                     let calibration = calibrations.get(&data.calibrated_sensor_token).unwrap();
@@ -324,11 +331,7 @@ impl Schema for NuScenes<'_> {
                     // The [`self::channel`] function is used to filter out
                     // sensor/data that we do not want to consider.
                     if let Some(channel) = self.channel(&sensor.channel) {
-                        let mut record = DetectionRecord::new(
-                            format!("{}/{}", scene.token, channel),
-                            data.timestamp,
-                            self.image(data),
-                        );
+                        let mut record = DetectionRecord::new(channel, self.image(data));
 
                         // Add the set of annotations to the [`DetectionRecord`].
                         //
@@ -357,9 +360,11 @@ impl Schema for NuScenes<'_> {
                 // INSERT
                 datastream.frames.push(frame);
             }
+
+            datastreams.push((scene.token.clone(), datastream));
         }
 
-        Ok(datastream)
+        Ok(datastreams)
     }
 }
 

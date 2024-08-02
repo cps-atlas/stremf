@@ -1,13 +1,13 @@
 use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::ArgMatches;
-use strem::datastream::exporter::stremf::DataExporter;
-use strem::datastream::DataStream;
-use strem_format::config::Configuration;
-use strem_format::schema::nuscenes::NuScenes;
-use strem_format::schema::{Schema, SchemaKind};
+use strem::datastream::io::exporter::DataExporter;
+use stremf::config::Configuration;
+use stremf::schema::nuscenes::NuScenes;
+use stremf::schema::{Schema, SchemaKind};
 
 pub struct App {
     matches: ArgMatches,
@@ -26,20 +26,22 @@ impl App {
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
         let config = self.configure()?;
 
-        let datastream = if let Some(infile) = &config.infile {
-            let formatter = NuScenes::new(infile, &config);
-            formatter.import()?
-        } else {
-            DataStream::new()
-        };
+        if let Some(infile) = &config.infile {
+            let schema = NuScenes::new(infile, &config);
+            let datastreams = schema.import()?;
 
-        // Export the [`DataStream`].
-        //
-        // We first set the [`DataExporter`]. This is necessary to export to the
-        // STREM format, accordingly.
-        datastream
-            .exporter(Box::new(DataExporter::new()))
-            .export(&config.outfile)?;
+            for (name, datastream) in datastreams {
+                let path = PathBuf::from(&config.outfile).join(format!("{}.json", name));
+                DataExporter::new().export(&datastream.frames, &path)?;
+
+                if config.debug {
+                    println!(
+                        "{}",
+                        AppDebug::from(format!("exported... {}", path.display()))
+                    );
+                }
+            }
+        }
 
         Ok(())
     }
@@ -53,10 +55,7 @@ impl App {
             infile: self.matches.get_one::<PathBuf>("input").cloned(),
             outfile: self.matches.get_one::<PathBuf>("FILE").unwrap().clone(),
             schema: match &self.matches.get_one::<String>("schema").unwrap()[..] {
-                "coco" => SchemaKind::Coco,
                 "nuscenes" => SchemaKind::NuScenes,
-                "strem" => SchemaKind::Strem,
-                "yolo" => SchemaKind::Yolo,
                 x => {
                     return Err(Box::new(AppError::from(format!(
                         "unsupported schema: `{}`",
@@ -66,6 +65,36 @@ impl App {
             },
             debug: self.matches.get_flag("debug"),
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AppDebug {
+    msg: String,
+}
+
+impl From<&str> for AppDebug {
+    fn from(msg: &str) -> Self {
+        AppDebug {
+            msg: msg.to_string(),
+        }
+    }
+}
+
+impl From<String> for AppDebug {
+    fn from(msg: String) -> Self {
+        AppDebug { msg }
+    }
+}
+
+impl fmt::Display for AppDebug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+
+        write!(f, "DEBUG({:020}s): stremf: app: {}", timestamp, self.msg)
     }
 }
 
