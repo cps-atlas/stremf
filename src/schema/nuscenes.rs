@@ -165,14 +165,18 @@ impl<'a> NuScenes<'a> {
                 let xmax = m.row(0).iter().copied().fold(f64::NAN, f64::max);
                 let ymax = m.row(1).iter().copied().fold(f64::NAN, f64::max);
 
+                let width = xmax - xmin;
+                let height = ymax - ymin;
+
                 res.entry(label.name.clone())
                     .or_default()
                     .push(Annotation::new(
                         label.name.clone(),
                         1.0,
                         BoundingBox::AxisAligned(aa::Region::new(
-                            Point::new(xmin, ymin),
-                            Point::new(xmax, ymax),
+                            Point::new(xmin + (width / 2.0), ymin + (height / 2.0)),
+                            width,
+                            height,
                         )),
                     ));
             }
