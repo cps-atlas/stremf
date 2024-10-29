@@ -172,6 +172,7 @@ impl<'a> NuScenes<'a> {
                     .or_default()
                     .push(Annotation::new(
                         label.name.clone(),
+                        annotation.instance_token.clone(),
                         1.0,
                         BoundingBox::AxisAligned(aa::Region::new(
                             Point::new(xmin + (width / 2.0), ymin + (height / 2.0)),
